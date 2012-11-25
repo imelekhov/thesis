@@ -1,4 +1,4 @@
-function [ P, state_vector, K ] = kalman_filter( Z, state_vector, F, R, Q, H, P, extrapolate, gain_type, GAIN, n )
+function [ P, state_vector, extrapolation, K ] = kalman_filter( Z, state_vector, F, R, Q, H, P, extrapolate, gain_type, GAIN, n )
 %KF_DISTANCES_ Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -11,6 +11,7 @@ end
 
 if extrapolate == 1
     state_vector = F * state_vector ;
+    extrapolation = state_vector ;
     P = Pp ;
     K = [] ;
 else
@@ -22,6 +23,7 @@ else
         otherwise
             warning('Unexpected Kalman gain type')
     end
+    extrapolation = F * state_vector ; 
     state_vector = F * state_vector + K * (Z - H * F * state_vector); % Updated (a posteriori) state estimate
     P = (I - K * H) * Pp;
 end

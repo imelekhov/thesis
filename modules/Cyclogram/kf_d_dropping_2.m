@@ -36,8 +36,8 @@ package_error = 0 ;
 
 if ~package_error
     ksi_start = 5000 ;
-    %P_d = -0.1 ;
-    P_d = 0.05 ;
+    P_d = -0.1 ;
+    %P_d = 0.05 ;
     [ksi_d_rx, ksi_d_lost, time_d_rx, time_d_lost] = ksi_analysis(ksi_d, ksi_start, time_d, P_d) ;
     orange = [0.6 0.2 0] ;
     visualize_ksi(ksi_d_rx, time_d_rx, ksi_d_lost, time_d_lost, orange, 'Distances data analysis') ;
@@ -69,6 +69,7 @@ state_vector_d = [D_noisy(1); 0; 0] ;
 extrapolate_d = 0 ; % always
 
 est_data_d = zeros(size(F_d,1), length(Time) - 1) ;
+extrapolate_data_d = zeros(size(F_d,1), length(Time) - 1) ;
 est_data_d_interp = zeros(size(F_d,1), length(time_d_lost)) ;
 est_data_interp_mark = zeros(1, length(time_d_lost)) ;
 if strcmp(gain_type, 'real') 
@@ -83,8 +84,9 @@ flag_end_package_lost = 0 ;
 for k_d = 1:length(Time) - 1
     if any(Time(k_d) == time_d_lost)
         extrapolate_d = 1 ; 
-        [ P_d, state_vector_d, ~ ] = kalman_filter( 0, state_vector_d, F_d, 0, Q_d, 0, P_d, extrapolate_d, gain_type, GAIN, n_d ) ;
+        [ P_d, state_vector_d, extrapolation, ~ ] = kalman_filter( 0, state_vector_d, F_d, 0, Q_d, 0, P_d, extrapolate_d, gain_type, GAIN, n_d ) ;
         est_data_d(:, k_d) = state_vector_d ;
+        extrapolate_data_d(:, k_d) = extrapolation ;
         if strcmp(gain_type, 'real')
             K_d_vec(:, k_d) = K_d ;
         end
@@ -112,8 +114,9 @@ for k_d = 1:length(Time) - 1
         continue ;
     end
     extrapolate_d = 0 ; 
-    [ P_d, state_vector_d, K_d ] = kalman_filter( D_noisy(k_d+1,1), state_vector_d, F_d, R_d, Q_d, H_d, P_d, extrapolate_d, gain_type, GAIN, n_d ) ;
+    [ P_d, state_vector_d, extrapolation, K_d ] = kalman_filter( D_noisy(k_d+1,1), state_vector_d, F_d, R_d, Q_d, H_d, P_d, extrapolate_d, gain_type, GAIN, n_d ) ;
     est_data_d(:, k_d) = state_vector_d ;
+    extrapolate_data_d(:, k_d) = extrapolation ;
     if strcmp(gain_type, 'real') 
         K_d_vec(:, k_d) = K_d ;
     end
@@ -128,6 +131,7 @@ figure();
 plot(Time(2:end), est_data_d(1,:) - D_ideal(2:end)', 'Color', green); 
 hold on
 plot(time_d_lost+Tk_d, est_data_interp_mark, 'sq', 'MarkerEdgeColor','k', 'MarkerFaceColor','c', 'MarkerSize', 5); 
+plot(Time(2:end), extrapolate_data_d(1,:) - D_ideal(2:end)', 'Color', orange)
 grid on
 xlabel('t, s')
 ylabel('\delta D, m')

@@ -27,12 +27,12 @@ switch idx_case
         break ;
 end
 
-package_error = 1 ;
+package_error = 0 ;
 
 if ~package_error
     ksi_start = 5000 ;
-    %P_satell = -0.1 ;
-    P_satell = 0.1 ;
+    P_satell = -0.1 ;
+    %P_satell = 0.1 ;
     [ksi_c_rx, ksi_c_lost, time_c_rx, time_c_lost] = ksi_analysis(ksi_c, ksi_start, time_c, P_satell) ;
     orange = [0.6 0.2 0] ;
     visualize_ksi(ksi_c_rx, time_c_rx, ksi_c_lost, time_c_lost, orange, 'Distances data analysis') ;
@@ -69,6 +69,7 @@ state_vector_c = [measuredCoordLCS(1,1); measuredCoordLCS(1,4); 0; ...
 extrapolate_c = 0 ; 
 
 est_data_c = zeros(size(F_c,1), length(Time) - 1) ;
+extrapolation_data_c = zeros(size(F_c,1), length(Time) - 1) ;
 est_data_c_interp = zeros(size(F_c,1), length(time_c_lost)) ;
 est_data_interp_mark = zeros(1, length(time_c_lost)) ;
 if strcmp(gain_type, 'real')
@@ -84,8 +85,9 @@ flag_end_package_lost = 0 ;
 for k_c = 1:length(Time) - 1
     if any(Time(k_c) == time_c_lost)
         extrapolate_c = 1 ; 
-        [ P_c, state_vector_c, ~ ] = kalman_filter( 0, state_vector_c, F_c, 0, Q_c, 0, P_c, extrapolate_c, gain_type, GAIN, n_c ) ;
+        [ P_c, state_vector_c, extrapolation, ~ ] = kalman_filter( 0, state_vector_c, F_c, 0, Q_c, 0, P_c, extrapolate_c, gain_type, GAIN, n_c ) ;
         est_data_c(:, k_c) = state_vector_c ;
+        extrapolation_data_c(:, k_c) = extrapolation ;
         if strcmp(gain_type, 'real')
             %K_c_vec(:, k_d) = K_c ;
         end
@@ -116,8 +118,9 @@ for k_c = 1:length(Time) - 1
     end
     
     extrapolate_c = 0 ; 
-    [ P_c, state_vector_c, K_c ] = kalman_filter( measuredCoordLCS(k_c+1,:)', state_vector_c, F_c, R_c, Q_c, H_c, P_c, extrapolate_c, gain_type, GAIN, n_c ) ;
+    [ P_c, state_vector_c, extrapolation, K_c ] = kalman_filter( measuredCoordLCS(k_c+1,:)', state_vector_c, F_c, R_c, Q_c, H_c, P_c, extrapolate_c, gain_type, GAIN, n_c ) ;
     est_data_c(:, k_c) = state_vector_c ;
+    extrapolation_data_c(:, k_c) = extrapolation ;
     if strcmp(gain_type, 'real') 
         K_c_vec = [K_c_vec K_c] ;
     end
@@ -126,7 +129,9 @@ for k_c = 1:length(Time) - 1
 end
 
 D_est = sqrt(est_data_c(1,:).^2 + est_data_c(4,:).^2 + est_data_c(7,:).^2) ;
+D_est_extrapolation = sqrt(extrapolation_data_c(1,:).^2 + extrapolation_data_c(4,:).^2 + extrapolation_data_c(7,:).^2) ;
 Vd_est = (est_data_c(1,:) .* est_data_c(2,:) + est_data_c(4,:) .* est_data_c(5,:) + est_data_c(7,:) .* est_data_c(8,:)) ./ D_est ;
+Vd_est_extrapolation = (extrapolation_data_c(1,:) .* extrapolation_data_c(2,:) + extrapolation_data_c(4,:) .* extrapolation_data_c(5,:) + extrapolation_data_c(7,:) .* extrapolation_data_c(8,:)) ./ D_est_extrapolation ;
 
 green  = [0.17 0.51 0.34] ; % green color
 orange = [0.87 0.49 0] ;    % orange color
@@ -135,6 +140,7 @@ figure();
 plot(Time(2:end), D_est - D_ideal(2:end)', 'Color', green); 
 hold on
 plot(time_c_lost+Tk_c, est_data_interp_mark, 'sq', 'MarkerEdgeColor','k', 'MarkerFaceColor','c', 'MarkerSize', 5); 
+plot(Time(2:end), D_est_extrapolation - D_ideal(2:end)', 'Color', orange) ;
 grid on
 xlabel('t, s')
 ylabel('\delta D, m')
