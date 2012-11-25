@@ -1,4 +1,4 @@
-function [ phi_rad, phi_deg ] = azimuth( ecef_ref, ecef_ac, ellipsoid )
+function [ phi_rad, phi_deg ] = azimuth( ecef_ref, ecef_ac, ellipsoid, type  )
 %AZIMUTH Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -19,7 +19,25 @@ g = cross(s, n_r, dim) ;
 
 norm_g = sqrt(g(:,1) .^ 2 + g(:,2) .^ 2 + g(:,3) .^ 2) ;
 
-phi_rad = acos(q_0 * g' / norm_g) ;
+switch type
+    case 'equator'
+        condition = g(1) < 0 && g(2) > 0 && g(3) > 0 ;
+    case 'not equator'
+        condition = g(1) < 0 && g(2) < 0 && g(3) > 0 && s(2) < 0 && s(3) > 0 ;
+end
+
+if (condition)
+    phi_rad = pi + acos(q_0 * g' / norm_g) ;
+else
+    phi_rad = pi - acos(q_0 * g' / norm_g) ;
+end
+
+% if (g(1) < 0 && g(2) > 0 && g(3) > 0)
+%     phi_rad = pi + acos(q_0 * g' / norm_g) ;
+% else
+%     phi_rad = pi - acos(q_0 * g' / norm_g) ;
+% end
+
 phi_deg = phi_rad * 180 / pi ;
 
 end
